@@ -1,0 +1,7 @@
+/.vscode
+/.claude
+/.embuild
+/target
+/doc
+/Cargo.lock
+/.github
