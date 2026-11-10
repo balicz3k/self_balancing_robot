@@ -1,19 +1,20 @@
+use esp_idf_hal::delay::{FreeRtos, TickType};
 use esp_idf_hal::gpio::{Output, PinDriver};
 use esp_idf_hal::i2c::*;
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_hal::delay::{FreeRtos, TickType};
+
+mod pin_mapping;
+
+use pin_mapping::PinMapping;
 
 const I2C_TIMEOUT: u32 = TickType::new_millis(50).ticks();
 
 fn scan_adresses(i2c: &mut I2cDriver) {
-    for adres in 0x00u8..=0x7Fu8
-    {
+    for adres in 0x00u8..=0x7Fu8 {
         let res = i2c.write(adres, &[], 3);
-        if res.is_ok()
-        {
+        if res.is_ok() {
             log::info!("address: {:#X} works", adres);
         }
-
     }
 }
 
@@ -22,8 +23,7 @@ fn wake_up_gyroscope(i2c: &mut I2cDriver) {
     const BYTES: &[u8] = &[0x6B, 0x00];
 
     let res = i2c.write(DEVICE_ADRESS, BYTES, I2C_TIMEOUT);
-    if res.is_err()
-    {
+    if res.is_err() {
         log::error!("Error writing to device: {:?}", res.err());
         return;
     }
@@ -46,18 +46,24 @@ fn read_movement(i2c: &mut I2cDriver) {
 
     let mut buffer = [0u8; 14];
     let res = i2c.write_read(DEVICE_ADRESS, DEVICE_REGISTER, &mut buffer, I2C_TIMEOUT);
-    if res.is_err()
-    {
+    if res.is_err() {
         log::error!("Error reading from device: {:?}", res.err());
         return;
     }
     let params = split_movement_params(&buffer);
-    log::info!("ax: {}, ay: {}, az: {}\ngx: {}, gy: {}, gz: {}", params.0, params.1, params.2, params.3, params.4, params.5);
+    log::info!(
+        "ax: {}, ay: {}, az: {}\ngx: {}, gy: {}, gz: {}",
+        params.0,
+        params.1,
+        params.2,
+        params.3,
+        params.4,
+        params.5
+    );
 }
 
-
 fn change_direction(in_a: &mut PinDriver<'_, Output>, in_b: &mut PinDriver<'_, Output>) {
-    if in_a.is_set_high(){
+    if in_a.is_set_high() {
         in_a.set_low().unwrap();
         in_b.set_high().unwrap();
     } else {
@@ -81,7 +87,6 @@ fn hard_stop_engine(in_a: &mut PinDriver<'_, Output>, in_b: &mut PinDriver<'_, O
     in_b.set_high().unwrap();
 }
 
-
 fn main() {
     // It is necessary to call this function once. Otherwise, some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -90,34 +95,44 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+    let pin_mapping = PinMapping::new();
+
     let pheripherals = Peripherals::take().unwrap();
     let config = I2cConfig::new().baudrate(esp_idf_hal::units::Hertz(400000));
-    let scl = pheripherals.pins.gpio8;
-    let sda = pheripherals.pins.gpio9;
-    let mut i2c: I2cDriver = I2cDriver::new(pheripherals.i2c0, sda, scl, &config).unwrap();
+    let mut i2c: I2cDriver = I2cDriver::new(
+        pheripherals.i2c0,
+        pin_mapping.imu_pins.sda_pin,
+        pin_mapping.imu_pins.scl_pin,
+        &config,
+    )
+    .unwrap();
     scan_adresses(&mut i2c);
 
     wake_up_gyroscope(&mut i2c);
 
-    let mut eep = PinDriver::output(pheripherals.pins.gpio15).unwrap();
+    let mut eep = PinDriver::output(pin_mapping.drive_pins.enable_motor_pin).unwrap();
     eep.set_high().unwrap();
 
-    let mut engine1_left = PinDriver::output(pheripherals.pins.gpio4).unwrap();
-    let mut engine1_right = PinDriver::output(pheripherals.pins.gpio5).unwrap();
+    let mut engine1_left =
+        PinDriver::output(pin_mapping.drive_pins.left_motor_pins.forward_pin).unwrap();
+    let mut engine1_right =
+        PinDriver::output(pin_mapping.drive_pins.left_motor_pins.backward_pin).unwrap();
 
     engine1_left.set_high().unwrap();
     engine1_right.set_low().unwrap();
 
-    let mut engine2_left = PinDriver::output(pheripherals.pins.gpio6).unwrap();
-    let mut engine2_right = PinDriver::output(pheripherals.pins.gpio7).unwrap();
+    let mut engine2_left =
+        PinDriver::output(pin_mapping.drive_pins.right_motor_pins.forward_pin).unwrap();
+    let mut engine2_right =
+        PinDriver::output(pin_mapping.drive_pins.right_motor_pins.backward_pin).unwrap();
 
     engine2_left.set_high().unwrap();
     engine2_right.set_low().unwrap();
-    
-    loop{
+
+    loop {
         eep.set_high().unwrap();
         FreeRtos::delay_ms(1000);
-        read_movement(&mut i2c);    
+        read_movement(&mut i2c);
         change_direction(&mut engine1_left, &mut engine1_right);
 
         FreeRtos::delay_ms(10000);
