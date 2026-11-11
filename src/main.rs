@@ -71,20 +71,20 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let pin_mapping = PinMapping::new();
+    let pheripherals = Peripherals::take().unwrap();
+    let pin_mapping = PinMapping::new(pheripherals);
 
-    //let pheripherals = Peripherals::take().unwrap();
     let config = I2cConfig::new().baudrate(esp_idf_hal::units::Hertz(400000));
-    // let mut i2c: I2cDriver = I2cDriver::new(
-    //     pheripherals.i2c0,
-    //     pin_mapping.imu_pins.sda_pin,
-    //     pin_mapping.imu_pins.scl_pin,
-    //     &config,
-    // )
-    // .unwrap();
-    // scan_adresses(&mut i2c);
+    let mut i2c: I2cDriver = I2cDriver::new(
+        pin_mapping.imu_pins.i2c,
+        pin_mapping.imu_pins.sda_pin,
+        pin_mapping.imu_pins.scl_pin,
+        &config,
+    )
+    .unwrap();
+    scan_adresses(&mut i2c);
 
-    // wake_up_gyroscope(&mut i2c);
+    wake_up_gyroscope(&mut i2c);
 
     let mut eep = PinDriver::output(pin_mapping.drive_pins.enable_motor_pin).unwrap();
     eep.set_high().unwrap();
@@ -93,7 +93,7 @@ fn main() {
     let mut right_motor = Motor::new(pin_mapping.drive_pins.right_motor_pins);
 
     loop {
-        // read_movement(&mut i2c);
+        read_movement(&mut i2c);
         right_motor.brake();
         left_motor.run_forward(0);
         log::info!("left motor run forward");
