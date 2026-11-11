@@ -92,15 +92,14 @@ fn main() {
     let mut left_motor = Motor::new(pin_mapping.drive_pins.left_motor_pins);
     let mut right_motor = Motor::new(pin_mapping.drive_pins.right_motor_pins);
 
+    let mut speed = 20.0 as f32;
+
     loop {
         read_movement(&mut i2c);
-        right_motor.brake();
-        left_motor.run_forward(0);
-        log::info!("left motor run forward");
-        FreeRtos::delay_ms(10000);
-        left_motor.stop();
-        right_motor.run_forward(0);
-        log::info!("right motor run forward");
-        FreeRtos::delay_ms(10000);
+        left_motor.run_forward(speed);
+        right_motor.run_forward(speed);
+        log::info!("both motors run forward with speed: {}", speed);
+        FreeRtos::delay_ms(1000);
+        speed += 1.0;
     }
 }
