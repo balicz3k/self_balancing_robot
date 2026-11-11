@@ -1,6 +1,5 @@
+use super::peripherals_mapping::MotorPins;
 use esp_idf_hal::gpio::{Output, PinDriver};
-
-use super::pin_mapping::MotorPins;
 
 pub struct Motor<'d> {
     forward_pin_driver: PinDriver<'d, Output>,

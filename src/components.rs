@@ -1,2 +1,2 @@
 pub mod motor;
-pub mod pin_mapping;
+pub mod peripherals_mapping;

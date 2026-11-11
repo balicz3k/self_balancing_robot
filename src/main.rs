@@ -6,7 +6,7 @@ use esp_idf_hal::i2c::*;
 use esp_idf_hal::peripherals::Peripherals;
 
 use components::motor::Motor;
-use components::pin_mapping::PinMapping;
+use components::peripherals_mapping::PeripheralsMapping;
 
 const I2C_TIMEOUT: u32 = TickType::new_millis(50).ticks();
 
@@ -72,7 +72,7 @@ fn main() {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let pheripherals = Peripherals::take().unwrap();
-    let pin_mapping = PinMapping::new(pheripherals);
+    let pin_mapping = PeripheralsMapping::new(pheripherals);
 
     let config = I2cConfig::new().baudrate(esp_idf_hal::units::Hertz(400000));
     let mut i2c: I2cDriver = I2cDriver::new(
