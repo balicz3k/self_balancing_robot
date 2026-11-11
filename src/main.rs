@@ -1,11 +1,12 @@
+mod components;
+
 use esp_idf_hal::delay::{FreeRtos, TickType};
-use esp_idf_hal::gpio::{Output, PinDriver};
+use esp_idf_hal::gpio::PinDriver;
 use esp_idf_hal::i2c::*;
 use esp_idf_hal::peripherals::Peripherals;
 
-mod pin_mapping;
-
-use pin_mapping::PinMapping;
+use components::motor::Motor;
+use components::pin_mapping::PinMapping;
 
 const I2C_TIMEOUT: u32 = TickType::new_millis(50).ticks();
 
@@ -62,31 +63,6 @@ fn read_movement(i2c: &mut I2cDriver) {
     );
 }
 
-fn change_direction(in_a: &mut PinDriver<'_, Output>, in_b: &mut PinDriver<'_, Output>) {
-    if in_a.is_set_high() {
-        in_a.set_low().unwrap();
-        in_b.set_high().unwrap();
-    } else {
-        in_a.set_high().unwrap();
-        in_b.set_low().unwrap();
-    }
-}
-
-fn start_engine(in_a: &mut PinDriver<'_, Output>, in_b: &mut PinDriver<'_, Output>) {
-    in_a.set_high().unwrap();
-    in_b.set_low().unwrap();
-}
-
-fn stop_engine(in_a: &mut PinDriver<'_, Output>, in_b: &mut PinDriver<'_, Output>) {
-    in_a.set_low().unwrap();
-    in_b.set_low().unwrap();
-}
-
-fn hard_stop_engine(in_a: &mut PinDriver<'_, Output>, in_b: &mut PinDriver<'_, Output>) {
-    in_a.set_high().unwrap();
-    in_b.set_high().unwrap();
-}
-
 fn main() {
     // It is necessary to call this function once. Otherwise, some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -97,54 +73,34 @@ fn main() {
 
     let pin_mapping = PinMapping::new();
 
-    let pheripherals = Peripherals::take().unwrap();
+    //let pheripherals = Peripherals::take().unwrap();
     let config = I2cConfig::new().baudrate(esp_idf_hal::units::Hertz(400000));
-    let mut i2c: I2cDriver = I2cDriver::new(
-        pheripherals.i2c0,
-        pin_mapping.imu_pins.sda_pin,
-        pin_mapping.imu_pins.scl_pin,
-        &config,
-    )
-    .unwrap();
-    scan_adresses(&mut i2c);
+    // let mut i2c: I2cDriver = I2cDriver::new(
+    //     pheripherals.i2c0,
+    //     pin_mapping.imu_pins.sda_pin,
+    //     pin_mapping.imu_pins.scl_pin,
+    //     &config,
+    // )
+    // .unwrap();
+    // scan_adresses(&mut i2c);
 
-    wake_up_gyroscope(&mut i2c);
+    // wake_up_gyroscope(&mut i2c);
 
     let mut eep = PinDriver::output(pin_mapping.drive_pins.enable_motor_pin).unwrap();
     eep.set_high().unwrap();
 
-    let mut engine1_left =
-        PinDriver::output(pin_mapping.drive_pins.left_motor_pins.forward_pin).unwrap();
-    let mut engine1_right =
-        PinDriver::output(pin_mapping.drive_pins.left_motor_pins.backward_pin).unwrap();
-
-    engine1_left.set_high().unwrap();
-    engine1_right.set_low().unwrap();
-
-    let mut engine2_left =
-        PinDriver::output(pin_mapping.drive_pins.right_motor_pins.forward_pin).unwrap();
-    let mut engine2_right =
-        PinDriver::output(pin_mapping.drive_pins.right_motor_pins.backward_pin).unwrap();
-
-    engine2_left.set_high().unwrap();
-    engine2_right.set_low().unwrap();
+    let mut left_motor = Motor::new(pin_mapping.drive_pins.left_motor_pins);
+    let mut right_motor = Motor::new(pin_mapping.drive_pins.right_motor_pins);
 
     loop {
-        eep.set_high().unwrap();
-        FreeRtos::delay_ms(1000);
-        read_movement(&mut i2c);
-        change_direction(&mut engine1_left, &mut engine1_right);
-
+        // read_movement(&mut i2c);
+        right_motor.brake();
+        left_motor.run_forward(0);
+        log::info!("left motor run forward");
         FreeRtos::delay_ms(10000);
-        hard_stop_engine(&mut engine1_left, &mut engine1_right);
-        hard_stop_engine(&mut engine2_left, &mut engine2_right);
+        left_motor.stop();
+        right_motor.run_forward(0);
+        log::info!("right motor run forward");
         FreeRtos::delay_ms(10000);
-
-        start_engine(&mut engine1_left, &mut engine1_right);
-        start_engine(&mut engine2_left, &mut engine2_right);
-
-        FreeRtos::delay_ms(10000);
-
-        change_direction(&mut engine2_left, &mut engine2_right);
     }
 }
