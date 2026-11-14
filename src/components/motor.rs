@@ -1,5 +1,5 @@
 use super::peripherals_mapping::MotorPeripherals;
-use esp_idf_hal::ledc::{LedcDriver};
+use esp_idf_hal::ledc::LedcDriver;
 
 pub struct Motor<'d> {
     max_motor_speed: f32,
