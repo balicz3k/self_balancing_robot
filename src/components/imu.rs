@@ -1,4 +1,4 @@
-use super::peripherals_mapping::ImuI2cBus;
+use super::board_resources::I2cBusResources;
 use esp_idf_hal::{
     delay::TickType,
     i2c::{I2cConfig, I2cDriver},
@@ -42,12 +42,12 @@ pub struct Imu<'d> {
 }
 
 impl<'d> Imu<'d> {
-    pub fn new(imu_i2c_bus: ImuI2cBus) -> Self {
+    pub fn new(i2c_bus_resources: I2cBusResources) -> Self {
         let i2c_config = I2cConfig::new().baudrate(BAUDRATE);
         let i2c_driver = I2cDriver::new(
-            imu_i2c_bus.i2c,
-            imu_i2c_bus.sda_pin,
-            imu_i2c_bus.scl_pin,
+            i2c_bus_resources.i2c_controller,
+            i2c_bus_resources.sda_pin,
+            i2c_bus_resources.scl_pin,
             &i2c_config,
         )
         .unwrap();

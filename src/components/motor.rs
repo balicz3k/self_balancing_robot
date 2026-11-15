@@ -27,7 +27,7 @@ impl Motor {
             motor_resources.backward_pin,
         )
         .unwrap();
-    
+
         let mut motor = Self {
             max_motor_speed: motor_forward_driver.get_max_duty() as f32,
             forward_pwm_driver: motor_forward_driver,
