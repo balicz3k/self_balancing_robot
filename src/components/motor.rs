@@ -1,18 +1,37 @@
-use super::peripherals_mapping::MotorPeripherals;
-use esp_idf_hal::ledc::LedcDriver;
+use super::board_resources::MotorResources;
+use esp_idf_hal::ledc::{LedcChannel, LedcDriver, LedcTimerDriver, LowSpeed};
 
-pub struct Motor<'d> {
+pub struct Motor {
     max_motor_speed: f32,
-    forward_pwm_driver: LedcDriver<'d>,
-    backward_pwm_driver: LedcDriver<'d>,
+    forward_pwm_driver: LedcDriver<'static>,
+    backward_pwm_driver: LedcDriver<'static>,
 }
 
-impl<'d> Motor<'d> {
-    pub fn new(motor_peripherals: MotorPeripherals) -> Self {
+impl Motor {
+    pub fn new<
+        C1: LedcChannel<SpeedMode = LowSpeed> + 'static,
+        C2: LedcChannel<SpeedMode = LowSpeed> + 'static,
+    >(
+        motor_resources: MotorResources<C1, C2>,
+        timer: &LedcTimerDriver<'static, LowSpeed>,
+    ) -> Self {
+        let motor_forward_driver = LedcDriver::new(
+            motor_resources.forward_channel,
+            timer,
+            motor_resources.forward_pin,
+        )
+        .unwrap();
+        let motor_backward_driver = LedcDriver::new(
+            motor_resources.backward_channel,
+            timer,
+            motor_resources.backward_pin,
+        )
+        .unwrap();
+    
         let mut motor = Self {
-            max_motor_speed: motor_peripherals.forward_pwm_driver.get_max_duty() as f32,
-            forward_pwm_driver: motor_peripherals.forward_pwm_driver,
-            backward_pwm_driver: motor_peripherals.backward_pwm_driver,
+            max_motor_speed: motor_forward_driver.get_max_duty() as f32,
+            forward_pwm_driver: motor_forward_driver,
+            backward_pwm_driver: motor_backward_driver,
         };
         motor.stop();
         motor
