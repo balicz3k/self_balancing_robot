@@ -8,7 +8,7 @@ pub enum Direction {
     LEFT,
     RIGHT,
 }
-struct DriveTrain {
+pub struct DriveTrain {
     left_motor: Motor,
     right_motor: Motor,
     enable_motor_driver: PinDriver<'static, Output>,
@@ -17,7 +17,7 @@ struct DriveTrain {
 
 impl DriveTrain {
     pub fn new(drive_resources: DriveResources) -> Self {
-        let timer_config = TimerConfig::new().frequency(Hertz(20_000));
+        let timer_config = TimerConfig::new().frequency(Hertz(2_000));
         let pwm_timer = LedcTimerDriver::new(drive_resources.pwm_timer, &timer_config).unwrap();
         Self {
             left_motor: Motor::new(drive_resources.left_motor_resources, &pwm_timer),
